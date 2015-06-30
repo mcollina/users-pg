@@ -4,7 +4,6 @@ var test = require('tape')
 var build = require('./')
 var withConn = require('with-conn-pg')
 var pbkdf2 = require('pbkdf2-password')
-var Joi = require('joi')
 
 var connString = 'postgres://localhost/users_tests'
 var schemaQuery = 'select column_name, data_type, character_maximum_length from INFORMATION_SCHEMA.COLUMNS where table_name = \'users\' ORDER BY column_name'
@@ -53,6 +52,7 @@ test('can insert users', function (t) {
       password: expected.password,
       salt: result.salt
     }, function (err, pass, salt, hash) {
+      t.error(err, 'no error')
       t.equal(result.hash, hash, 'hash matches')
 
       withConn.end()
