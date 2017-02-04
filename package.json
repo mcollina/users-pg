@@ -1,6 +1,6 @@
 {
   "name": "@matteo.collina/users-pg",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Manage Users as a module, with node and postgres",
   "main": "users.js",
   "scripts": {
