@@ -2,10 +2,10 @@
 
 var test = require('tape')
 var build = require('./')
-var withConn = require('with-conn-pg')
 var pbkdf2 = require('pbkdf2-password')
 
 var connString = 'postgres://localhost/users_tests'
+var withConn = require('with-conn-pg')(connString)
 var schemaQuery = 'select column_name, data_type, character_maximum_length from INFORMATION_SCHEMA.COLUMNS where table_name = \'users\' ORDER BY column_name'
 var users
 
@@ -14,7 +14,7 @@ test('create schema', function (t) {
   users.dropSchema(function () {
     users.createSchema(function (err) {
       t.error(err, 'no error')
-      withConn(connString, function (conn, done) {
+      withConn(function (conn, done) {
         t.error(err, 'no error')
 
         conn.query(schemaQuery, function (err, result) {
@@ -54,8 +54,6 @@ test('can insert users', function (t) {
     }, function (err, pass, salt, hash) {
       t.error(err, 'no error')
       t.equal(result.hash, hash, 'hash matches')
-
-      withConn.end()
       t.end()
     })
   })
@@ -77,7 +75,6 @@ test('can update users', function (t) {
       t.notEqual(result2.hash, result.hash, 'hash does not match')
       t.equal(result2.id, result.id, 'id matches')
       t.equal(result2.username, toWrite.username, 'username matches')
-      withConn.end()
       t.end()
     })
   })
@@ -94,7 +91,6 @@ test('can get users by id', function (t) {
     users.getById(expected.id, function (err, result) {
       t.error(err, 'no error')
       t.deepEqual(result, expected, 'matches')
-      withConn.end()
       t.end()
     })
   })
@@ -111,7 +107,6 @@ test('can get users by username', function (t) {
     users.getByUsername(expected.username, function (err, result) {
       t.error(err, 'no error')
       t.deepEqual(result, expected, 'matches')
-      withConn.end()
       t.end()
     })
   })
@@ -126,7 +121,6 @@ test('cannot insert an user without a username', function (t) {
     t.ok(err, 'insert errors')
     t.equal(err.name, 'ValidationError', 'error type matches')
     t.equal(err.details[0].message, '"username" is not allowed to be empty', 'validation error matches')
-    withConn.end()
     t.end()
   })
 })
@@ -145,7 +139,6 @@ test('can authenticate successfully users', function (t) {
     }, function (err, result) {
       t.error(err, 'no error')
       t.equal(result, true, 'matches')
-      withConn.end()
       t.end()
     })
   })
@@ -165,7 +158,6 @@ test('can authenticate unsuccessfully users', function (t) {
     }, function (err, result) {
       t.error(err, 'no error')
       t.equal(result, false, 'matches')
-      withConn.end()
       t.end()
     })
   })
@@ -178,7 +170,12 @@ test('getting an non-existing user', function (t) {
     t.equal(err.output.statusCode, 404, 'status code matches')
     t.equal(err.status, 404, 'status code matches')
     t.equal(err.notFound, true, 'notFound property matches')
-    withConn.end()
     t.end()
   })
+})
+
+test('close off everything', function (t) {
+  withConn.end()
+  users.end()
+  t.end()
 })

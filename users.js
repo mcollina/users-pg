@@ -2,7 +2,7 @@
 
 var fs = require('fs')
 var path = require('path')
-var withConn = require('with-conn-pg')
+var WithConn = require('with-conn-pg')
 var Joi = require('joi')
 var boom = require('boom')
 var pbkdf2 = require('pbkdf2-password')
@@ -25,30 +25,32 @@ function readQuery (file) {
 
 function users (connString) {
   var passHasher = pbkdf2()
+  var withConn = WithConn(connString)
 
   return {
     joiSchema: schema,
-    createSchema: withConn(connString, createSchema),
-    dropSchema: withConn(connString, dropSchema),
-    put: withConn(connString, [
+    createSchema: withConn(createSchema),
+    dropSchema: withConn(dropSchema),
+    put: withConn([
       validate,
       genPass,
       execPut,
       returnFirst
     ]),
-    getById: withConn(connString, [
+    getById: withConn([
       execGetById,
       returnFirst
     ]),
-    getByUsername: withConn(connString, [
+    getByUsername: withConn([
       execGetByUsername,
       returnFirst
     ]),
-    authenticate: withConn(connString, [
+    authenticate: withConn([
       queryForHash,
       returnFirst,
       matchHash
-    ])
+    ]),
+    end: withConn.end.bind(withConn)
   }
 
   function createSchema (conn, callback) {
