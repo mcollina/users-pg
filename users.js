@@ -5,7 +5,7 @@ var path = require('path')
 var WithConn = require('with-conn-pg')
 var Ajv = require('ajv')
 var createError = require('http-errors')
-var pbkdf2 = require('pbkdf2-password')
+var securePassword = require('secure-password')
 var createTable = readQuery('create.sql')
 var dropTable = readQuery('drop.sql')
 var insertUser = readQuery('insert.sql')
@@ -39,7 +39,7 @@ function readQuery (file) {
 }
 
 function users (connString) {
-  var passHasher = pbkdf2()
+  var pwd = securePassword()
   var withConn = WithConn(connString)
 
   return {
@@ -89,7 +89,7 @@ function users (connString) {
   }
 
   function genPass (conn, user, callback) {
-    passHasher(user, function (err, pass, salt, hash) {
+    pwd.hash(Buffer.from(user.password), function (err, hash) {
       if (err) {
         return callback(err)
       }
@@ -97,9 +97,8 @@ function users (connString) {
       callback(null, conn, {
         id: user.id,
         username: user.username,
-        password: pass,
-        salt: salt,
-        hash: hash
+        password: user.password,
+        hash: hash.toString('base64')
       })
     })
   }
@@ -108,8 +107,7 @@ function users (connString) {
     var toExec = user.id ? updateUser : insertUser
     var args = [
       user.username,
-      user.hash,
-      user.salt
+      user.hash
     ]
 
     if (user.id) {
@@ -150,8 +148,12 @@ function users (connString) {
   }
 
   function matchHash (user, callback) {
-    passHasher(user, function (err, pass, salt, hash) {
-      if (user.hash === hash) {
+    pwd.verify(Buffer.from(user.password), Buffer.from(user.hash, 'base64'), function (err, result) {
+      if (err) {
+        return callback(err)
+      }
+
+      if (result === securePassword.VALID || result === securePassword.VALID_NEEDS_REHASH) {
         callback(err, true, user)
       } else {
         callback(err, false, user)

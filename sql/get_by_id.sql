@@ -1,1 +1,1 @@
-SELECT id, username, hash, salt FROM users WHERE id=$1
+SELECT id, username, hash FROM users WHERE id=$1

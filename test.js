@@ -4,7 +4,7 @@ var tap = require('tap')
 var test = tap.test
 var tearDown = tap.tearDown
 var build = require('./')
-var pbkdf2 = require('pbkdf2-password')
+var securePassword = require('secure-password')
 
 var connString = 'postgres://localhost/users_tests'
 var withConn = require('with-conn-pg')(connString)
@@ -25,11 +25,10 @@ test('create schema', function (t) {
 
         conn.query(schemaQuery, function (err, result) {
           t.error(err, 'no error')
-          t.equal(result.rows.length, 4, 'has 4 columns')
+          t.equal(result.rows.length, 3, 'has 4 columns')
           t.equal(result.rows[0].column_name, 'hash', 'has an hash')
           t.equal(result.rows[1].column_name, 'id', 'has an id')
-          t.equal(result.rows[2].column_name, 'salt', 'has a salt')
-          t.equal(result.rows[3].column_name, 'username', 'has a name')
+          t.equal(result.rows[2].column_name, 'username', 'has a name')
           done()
         })
       })(function (err) {
@@ -51,15 +50,12 @@ test('can insert users', function (t) {
     t.ok(result.id, 'it has an id')
     t.equal(result.username, expected.username, 'it has a username')
     t.equal(result.password, expected.password, 'it has a password')
-    t.ok(result.salt, 'it has a salt')
     t.ok(result.hash, 'it has an hash')
 
-    pbkdf2()({
-      password: expected.password,
-      salt: result.salt
-    }, function (err, pass, salt, hash) {
+    var pwd = securePassword()
+    pwd.verify(Buffer.from(expected.password), Buffer.from(result.hash, 'base64'), function (err, result) {
       t.error(err, 'no error')
-      t.equal(result.hash, hash, 'hash matches')
+      t.equal(result, securePassword.VALID, 'hash matches')
       t.end()
     })
   })

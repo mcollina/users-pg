@@ -1,1 +1,1 @@
-INSERT INTO users (username, hash, salt) VALUES ($1, $2, $3) RETURNING id, username, hash, salt
+INSERT INTO users (username, hash) VALUES ($1, $2) RETURNING id, username, hash
