@@ -1,6 +1,8 @@
 'use strict'
 
-var test = require('tape')
+var tap = require('tap')
+var test = tap.test
+var tearDown = tap.tearDown
 var build = require('./')
 var pbkdf2 = require('pbkdf2-password')
 
@@ -8,6 +10,10 @@ var connString = 'postgres://localhost/users_tests'
 var withConn = require('with-conn-pg')(connString)
 var schemaQuery = 'select column_name, data_type, character_maximum_length from INFORMATION_SCHEMA.COLUMNS where table_name = \'users\' ORDER BY column_name'
 var users
+
+tearDown(function () {
+  users.end()
+})
 
 test('create schema', function (t) {
   users = build(connString)
@@ -119,8 +125,9 @@ test('cannot insert an user without a username', function (t) {
   }
   users.put(expected, function (err, result) {
     t.ok(err, 'insert errors')
-    t.equal(err.name, 'ValidationError', 'error type matches')
-    t.equal(err.details[0].message, '"username" is not allowed to be empty', 'validation error matches')
+    t.equal(err.name, 'UnprocessableEntityError', 'error type matches')
+    t.equal(err.details[0].dataPath, '.username', 'validation data path matches')
+    t.equal(err.details[0].message, 'should NOT be shorter than 1 characters', 'validation error matches')
     t.end()
   })
 })
@@ -167,15 +174,8 @@ test('getting an non-existing user', function (t) {
   users.getById(42, function (err, result) {
     t.ok(err, 'errors')
     t.notOk(result, 'no result')
-    t.equal(err.output.statusCode, 404, 'status code matches')
     t.equal(err.status, 404, 'status code matches')
     t.equal(err.notFound, true, 'notFound property matches')
     t.end()
   })
-})
-
-test('close off everything', function (t) {
-  withConn.end()
-  users.end()
-  t.end()
 })
